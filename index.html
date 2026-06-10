@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>RoboVac: Home Sweet Home</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { width: 100%; height: 100%; overflow: hidden; background: #161a26; }
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; color: #e8eaf0; }
+  canvas { display: block; }
+
+  .panel {
+    position: absolute;
+    background: rgba(18, 22, 34, 0.82);
+    border: 1px solid rgba(255,255,255,0.10);
+    border-radius: 12px;
+    padding: 12px 16px;
+    backdrop-filter: blur(6px);
+    user-select: none;
+  }
+  #missionPanel { top: 16px; left: 16px; width: 290px; }
+  #missionPanel .mtag { font-size: 11px; letter-spacing: 1.5px; color: #7fd4ff; font-weight: 700; }
+  #missionPanel .mtitle { font-size: 17px; font-weight: 700; margin: 2px 0 4px; }
+  #missionPanel .mdesc { font-size: 12.5px; color: #aab2c5; line-height: 1.45; }
+  .pbar { height: 8px; background: rgba(255,255,255,0.10); border-radius: 4px; margin-top: 9px; overflow: hidden; }
+  .pbar > div { height: 100%; width: 0%; background: linear-gradient(90deg, #46c0ff, #6affc2); border-radius: 4px; transition: width .25s; }
+  #missionProgressText { font-size: 11.5px; color: #8fa0bb; margin-top: 5px; text-align: right; }
+
+  #statusPanel { top: 16px; right: 16px; width: 215px; }
+  .statRow { display: flex; align-items: center; gap: 8px; margin: 5px 0; font-size: 12px; }
+  .statRow .ico { width: 20px; text-align: center; }
+  .barWrap { flex: 1; height: 10px; background: rgba(255,255,255,0.10); border-radius: 5px; overflow: hidden; }
+  #batteryBar { height: 100%; width: 100%; background: linear-gradient(90deg, #57e389, #aef2c3); border-radius: 5px; }
+  #batteryBar.low { background: linear-gradient(90deg, #ff5c5c, #ffb05c); }
+  #batteryBar.charging { background: linear-gradient(90deg, #57e3d8, #7fd4ff); }
+  #bagBar { height: 100%; width: 0%; background: linear-gradient(90deg, #c9a26b, #e7cf9a); border-radius: 5px; }
+  #scoreVal { font-size: 21px; font-weight: 800; color: #ffd86b; }
+  #scoreRow { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 2px; }
+  #scoreRow span:first-child { font-size: 11px; letter-spacing: 1.5px; color: #8fa0bb; font-weight: 700; }
+  #roomName { font-size: 11.5px; color: #8fa0bb; text-align: right; margin-top: 4px; min-height: 14px; }
+
+  #hints { bottom: 14px; left: 16px; font-size: 11.5px; color: #9aa5ba; padding: 8px 12px; }
+  #hints b { color: #dfe5f0; }
+
+  #toast {
+    position: absolute; top: 90px; left: 50%; transform: translateX(-50%);
+    background: rgba(20, 26, 40, 0.92); border: 1px solid rgba(127, 212, 255, 0.35);
+    color: #eaf4ff; padding: 10px 22px; border-radius: 10px; font-size: 15px; font-weight: 600;
+    opacity: 0; transition: opacity .3s; pointer-events: none; white-space: nowrap;
+  }
+  #toast.show { opacity: 1; }
+
+  #overlay {
+    position: absolute; inset: 0; background: rgba(10, 13, 22, 0.88);
+    display: flex; align-items: center; justify-content: center; z-index: 10;
+  }
+  #overlay .card {
+    text-align: center; max-width: 560px; padding: 40px 48px;
+    background: rgba(22, 28, 44, 0.95); border: 1px solid rgba(255,255,255,0.12); border-radius: 20px;
+  }
+  #overlay h1 { font-size: 34px; margin-bottom: 4px; }
+  #overlay h2 { font-size: 15px; color: #7fd4ff; font-weight: 600; margin-bottom: 22px; }
+  #overlay .controls { text-align: left; display: inline-block; font-size: 14px; color: #c2cadb; line-height: 2; margin-bottom: 24px; }
+  #overlay .controls b { display: inline-block; min-width: 110px; color: #fff; }
+  #overlay button {
+    font-size: 17px; font-weight: 700; color: #10141f; background: linear-gradient(90deg, #46c0ff, #6affc2);
+    border: none; padding: 13px 42px; border-radius: 12px; cursor: pointer;
+  }
+  #overlay button:hover { filter: brightness(1.1); }
+  #pauseLabel {
+    position: absolute; inset: 0; display: none; align-items: center; justify-content: center;
+    font-size: 42px; font-weight: 800; color: rgba(255,255,255,0.85); background: rgba(10,13,22,0.5);
+    letter-spacing: 4px; z-index: 5;
+  }
+</style>
+</head>
+<body>
+  <div id="missionPanel" class="panel">
+    <div class="mtag" id="missionTag">MISSION 1/6</div>
+    <div class="mtitle" id="missionTitle">—</div>
+    <div class="mdesc" id="missionDesc">—</div>
+    <div class="pbar"><div id="missionBar"></div></div>
+    <div id="missionProgressText">0 / 0</div>
+  </div>
+
+  <div id="statusPanel" class="panel">
+    <div id="scoreRow"><span>SCORE</span><span id="scoreVal">0</span></div>
+    <div class="statRow"><span class="ico">🔋</span><div class="barWrap"><div id="batteryBar"></div></div><span id="batteryPct" style="width:38px;text-align:right">100%</span></div>
+    <div class="statRow"><span class="ico">🗑️</span><div class="barWrap"><div id="bagBar"></div></div><span id="bagPct" style="width:38px;text-align:right">0/25</span></div>
+    <div id="roomName">Hallway</div>
+  </div>
+
+  <div id="hints" class="panel"><b>W/S</b> drive &nbsp;·&nbsp; <b>A/D</b> turn &nbsp;·&nbsp; <b>Shift</b> boost &nbsp;·&nbsp; <b>E</b> interact/pet &nbsp;·&nbsp; <b>Space</b> beep horn &nbsp;·&nbsp; <b>P</b> pause</div>
+
+  <div id="toast"></div>
+  <div id="pauseLabel">PAUSED</div>
+
+  <div id="overlay">
+    <div class="card">
+      <h1>🤖 RoboVac</h1>
+      <h2>HOME SWEET HOME — a tiny vacuum with big missions</h2>
+      <div class="controls">
+        <div><b>W / S or ↑ / ↓</b> drive forward / reverse</div>
+        <div><b>A / D or ← / →</b> turn</div>
+        <div><b>Shift</b> boost (drains battery faster)</div>
+        <div><b>E</b> interact — pet cats &amp; dogs, greet humans</div>
+        <div><b>Space</b> beep the horn (scares pets away)</div>
+        <div><b>P</b> pause &nbsp;&nbsp; <b>R</b> restart</div>
+      </div>
+      <div style="font-size:13px;color:#8fa0bb;margin-bottom:24px">
+        Vacuum dust, befriend the cat, survive the dog, don't trip the humans.<br/>
+        Watch your battery — recharge and empty your dust bag at the dock.
+      </div>
+      <button id="startBtn">START CLEANING</button>
+    </div>
+  </div>
+
+  <script type="importmap">
+    { "imports": { "three": "./vendor/three.module.min.js" } }
+  </script>
+  <script type="module" src="./main.js"></script>
+</body>
+</html>
