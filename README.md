@@ -1,5 +1,7 @@
 # 🤖 RoboVac: Home Sweet Home
 
+**▶︎ Play it now: <https://itruf.github.io/robovac-game/>**
+
 A 3D browser game where you play a robot vacuum on a mission to keep a busy
 household clean — while navigating around its cats, dogs and humans.
 
